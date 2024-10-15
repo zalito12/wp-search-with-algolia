@@ -115,14 +115,30 @@ class Algolia_Utils {
 	public static function get_post_images( $post_id ) {
 		$images = array();
 
-		if ( get_post_type( $post_id ) === 'attachment' ) {
+		$post_type = get_post_type( $post_id );
+		
+		if ( $post_type === 'attachment' ) {
 			$post_thumbnail_id = (int) $post_id;
 		} else {
 			$post_thumbnail_id = get_post_thumbnail_id( (int) $post_id );
 		}
 
+		if ( empty ( $post_thumbnail_id ) && $post_type === 'product_variation' ) {
+			$product = wc_get_product( $post_id );
+			$parent_id = $product->get_parent_id(); 
+			if ( $parent_id ) {
+				$post_thumbnail_id = get_post_thumbnail_id ( (int) $parent_id );
+			}	
+		}
+
+		$sizes = array( 'thumbnail' );
+
+		if ( $post_type === 'product_' || $post_type === 'product_variation' ) {
+			$sizes = array( 'woocommerce_gallery_thumbnail' );
+		}
+
 		if ( $post_thumbnail_id ) {
-			$sizes = (array) apply_filters( 'algolia_post_images_sizes', array( 'thumbnail' ) );
+			$sizes = (array) apply_filters( 'algolia_post_images_sizes', $sizes );
 			foreach ( $sizes as $size ) {
 				$info = wp_get_attachment_image_src( $post_thumbnail_id, $size );
 				if ( ! $info ) {

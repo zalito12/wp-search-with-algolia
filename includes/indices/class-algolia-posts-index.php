@@ -227,21 +227,54 @@ final class Algolia_Posts_Index extends Algolia_Index {
 
 		$shared_attributes['taxonomies']              = array();
 		$shared_attributes['taxonomies_hierarchical'] = array();
-		foreach ( $taxonomy_objects as $taxonomy ) {
+		if ( $post->post_type === 'product_variation' ) {
+			$product = wc_get_product( $post->ID );
+			foreach ( $taxonomy_objects as $taxonomy ) {
+				$terms = $product->get_attribute($taxonomy->name);
+				$terms = is_array( $terms ) ? $terms : ( !empty( $terms ) ? array(array(  'name' => $terms ) ) : array () );
 
-			$terms = wp_get_object_terms( $post->ID, $taxonomy->name );
-			$terms = is_array( $terms ) ? $terms : array();
+				$taxonomy_values = wp_list_pluck( $terms, 'name' );
+				if ( ! empty( $taxonomy_values ) ) {
+					$shared_attributes['taxonomies'][ $taxonomy->name ] = $taxonomy_values;
+				}
+			}	
 
-			if ( $taxonomy->hierarchical ) {
-				$hierarchical_taxonomy_values = Algolia_Utils::get_taxonomy_tree( $terms, $taxonomy->name );
-				if ( ! empty( $hierarchical_taxonomy_values ) ) {
-					$shared_attributes['taxonomies_hierarchical'][ $taxonomy->name ] = $hierarchical_taxonomy_values;
+			if ( $product->get_parent_id() ) {
+				foreach ( $taxonomy_objects as $taxonomy ) {
+
+					$terms = wp_get_object_terms( $product->get_parent_id(), $taxonomy->name );
+					$terms = is_array( $terms ) ? $terms : array();
+
+					if ( $taxonomy->hierarchical ) {
+						$hierarchical_taxonomy_values = Algolia_Utils::get_taxonomy_tree( $terms, $taxonomy->name );
+						if ( ! empty( $hierarchical_taxonomy_values ) ) {
+							$shared_attributes['taxonomies_hierarchical'][ $taxonomy->name ] = $hierarchical_taxonomy_values;
+						}
+					}
+
+					$taxonomy_values = wp_list_pluck( $terms, 'name' );
+					if ( ! empty( $taxonomy_values ) && ! isset( $shared_attributes['taxonomies'][ $taxonomy->name ]) ) {
+						$shared_attributes['taxonomies'][ $taxonomy->name ] = $taxonomy_values;
+					}
 				}
 			}
+		} else {
 
-			$taxonomy_values = wp_list_pluck( $terms, 'name' );
-			if ( ! empty( $taxonomy_values ) ) {
-				$shared_attributes['taxonomies'][ $taxonomy->name ] = $taxonomy_values;
+			foreach ( $taxonomy_objects as $taxonomy ) {
+				$terms = wp_get_object_terms( $post->ID, $taxonomy->name );
+				$terms = is_array( $terms ) ? $terms : array();
+
+				if ( $taxonomy->hierarchical ) {
+					$hierarchical_taxonomy_values = Algolia_Utils::get_taxonomy_tree( $terms, $taxonomy->name );
+					if ( ! empty( $hierarchical_taxonomy_values ) ) {
+						$shared_attributes['taxonomies_hierarchical'][ $taxonomy->name ] = $hierarchical_taxonomy_values;
+					}
+				}
+
+				$taxonomy_values = wp_list_pluck( $terms, 'name' );
+				if ( ! empty( $taxonomy_values ) ) {
+					$shared_attributes['taxonomies'][ $taxonomy->name ] = $taxonomy_values;
+				}
 			}
 		}
 
